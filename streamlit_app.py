@@ -8,7 +8,7 @@ from io import StringIO
 # en haut de ton app.py, après st.title()
 tab1, tab2 = st.tabs(["Simulation globale", "Édition détaillée"])
 
-with tab1:
+with tab2:
 
     st.set_page_config(page_title="Simulateur CA & Charges", layout="wide")
 
@@ -145,7 +145,7 @@ with tab1:
         "par une requête SQL avec `clickhouse_connect` ou `sqlalchemy` et charge directement le DataFrame."
     )
 
-with tab2:
+with tab1:
     st.subheader("Édition par sous-catégorie & mois")
 
     # Charger le fichier tabulaire préparé
@@ -181,8 +181,49 @@ with tab2:
     # Agréger proprement
     df_ca_sum = df_ca.groupby("date", as_index=False)["valeur"].sum()
 
+    df_ca_sum["valeur_k"] = (df_ca_sum["valeur"] / 1000).round(0)  # arrondi à l’unité K€
+    df_ca_sum["valeur_k"] = (df_ca_sum["valeur"] / 1000).round(0).astype(int)
+    df_ca_sum["valeur_label"] = df_ca_sum["valeur_k"].astype(str) + " K€"
+
+    fig = px.line(
+    df_ca_sum,
+    x="date",
+    y="valeur_k",
+    title="Chiffre d'affaires (K€)",
+    markers=True,
+    text="valeur_label"  # affiche la valeur sur chaque point
+    )
+
+    # Mise en forme
+    fig.update_traces(
+    textposition="top center",
+    line_shape="spline"  # rend la courbe arrondie/lissée
+    )
+
+    fig.update_layout(
+    yaxis_title="CA (K€)",
+    xaxis_title="Date",
+    hovermode="x unified",
+    yaxis=dict(showgrid=False),  # enlève les lignes horizontales
+    )
+
+    fig.update_traces(
+    line_shape="spline",
+    textposition="top center",
+    textfont=dict(size=12, family="Arial Black"),
+    texttemplate="%{text}"
+    )
+
+    fig.update_layout(
+    yaxis=dict(showgrid=False, title="CA (K€)"),
+    xaxis_title="Date",
+    hovermode="x unified"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
     # Bien mettre la date en index pour line_chart
-    st.line_chart(df_ca_sum.set_index("date")["valeur"])
+    st.line_chart(df_ca_sum.set_index("date")["valeur_k"])
 
     # Option d’export
     st.download_button(
